@@ -36,7 +36,7 @@ struct cubelete {
 	double dist;
 };
 
-int determineBin(bead b, int gridSize, int numGridX, int numGridY, int numGridZ)
+int determineBin(bead b, double gridSize, int numGridX, int numGridY, int numGridZ)
 {
 	int cellx = (int)((b.x) / gridSize);
 	int celly = (int)((b.y) / gridSize);
