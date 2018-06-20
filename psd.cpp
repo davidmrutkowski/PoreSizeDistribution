@@ -180,13 +180,12 @@ int main()
 	
 	int numTrials = 5000;
 	
+	// minHistDist doesn't do anything currently and is effectively 0.0 regardless of input file
 	double minHistDist = 0.0;
 	double maxHistDist = 100.0;
 	double histStep = 0.1;
 	
 	long int randomSeed = 0;
-	
-	//cout << "hello" << endl;
 	
 	// read in input.dat
 	int fileLineCount = 0;
@@ -243,7 +242,6 @@ int main()
 		return 0;
 	}
 		
-	//exit(0);
 	//srand48((long int)time(NULL));
 	srand48(randomSeed);
 	
@@ -488,7 +486,7 @@ int main()
 	// randomly pick cubeletes
 	//int numTrials = 5000;
 	
-	int histSize = (int)((maxHistDist - minHistDist)/ histStep);
+	int histSize = (int)((maxHistDist)/ histStep);
 	int *hist = new int[histSize];
 	for(int h = 0; h < histSize; h++)
 	{
@@ -532,7 +530,7 @@ int main()
 					maxCubelete = j;
 				}
 				
-				int tempHistPos = (int)((cubeleteList[j].dist * 2.0 - minHistDist) / histStep);
+				int tempHistPos = (int)((cubeleteList[j].dist * 2.0) / histStep);
 				
 				for(int h = 0; h < tempHistPos; h++)
 				{
@@ -551,7 +549,7 @@ int main()
 	{
 		for (int h = 0; h < histSize; h++)
 		{
-			psdCummulative << minHistDist + h*histStep + 0.5*histStep << " " << (double)hist[h] / (double)hist[0] << endl;
+			psdCummulative << h*histStep + 0.5*histStep << " " << (double)hist[h] / (double)hist[0] << endl;
 		}
 		
 		psdCummulative.close();
@@ -566,7 +564,7 @@ int main()
 		{
 			double x1 = (h-1)*histStep + 0.5*histStep;
 			double x2 = (h+1)*histStep + 0.5*histStep;
-			psd << minHistDist + (h)*histStep + 0.5*histStep << " " << -((double)hist[h+1] - (double)hist[h-1] ) / (x2 - x1) / (double)hist[0] << endl;
+			psd << (h)*histStep + 0.5*histStep << " " << -((double)hist[h+1] - (double)hist[h-1] ) / (x2 - x1) / (double)hist[0] << endl;
 		}
 		
 		psd.close();
