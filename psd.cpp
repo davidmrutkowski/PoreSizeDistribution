@@ -2,15 +2,19 @@
 // Name        : psd.cpp
 // Author      : David Rutkowski
 // Description : Calculates the pore size distribution (psd) based originally on code from Poreblazer (Lev Sarkisov group)
+// Compile with "icpc -fopenmp -o psd psd.cpp" or equivalent g++ expression
 //============================================================================
 
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <vector>
+#include <algorithm>
+#include <sstream>
 
 using namespace std;
 
@@ -85,67 +89,6 @@ void determineCells(double x, double y, double z, double gridSize, int numGridX,
 	cells[1] = celly;
 	cells[2] = cellz;
 }
-
-/*void makelinks(int **link, int numGridX, int numGridY, int numGridZ)
-{
-	int rxlink[27], rylink[27], rzlink[27];
-	int icell[numGridX*numGridY*numGridZ], jcell[numGridX*numGridY*numGridZ], kcell[numGridX*numGridY*numGridZ];
-
-	unsigned int count = 0;
-	
-	for(int i = -1; i <= 1; i++)
-	{
-		for(int j = -1; j <= 1; j++)
-		{
-			for(int k = -1; k <= 1; k++)
-			{
-				rxlink[count] = i;
-				rylink[count] = j;
-				rzlink[count] = k;
-				
-				count++;
-			}
-		}
-	}
-
-	count = 0;
-	for(int i = 0; i < numGridX; i++)
-	{
-		for(int j = 0; j < numGridY; j++)
-		{
-			for (int k = 0; k < numGridZ; k++)
-			{
-				icell[count] = i;
-				jcell[count] = j;
-				kcell[count] = k;
-				count++;
-			}
-		}
-	}
-	
-	//cout << "C: " << count << endl;
-	
-	for(int i = 0; i < count; i++)
-	{
-		for(int j = 0; j < 27; j++)
-		{
-			int cellx = icell[i] + rxlink[j];
-			int celly = jcell[i] + rylink[j];
-			int cellz = kcell[i] + rzlink[j];
-
-			cellx = cellx - numGridX*(int)floor((double)(cellx)/(double)(numGridX));
-			celly = celly - numGridY*(int)floor((double)(celly)/(double)(numGridY));
-			cellz = cellz - numGridZ*(int)floor((double)(cellz)/(double)(numGridZ));
-
-			int b = (cellx*numGridY*numGridX) + (celly)*numGridY + cellz;
-
-			//cout << b << endl;
-			link[i][j] = b;
-		}
-		//exit(0);
-	}
-}*/
-
 
 double periodicWrap(double value, double boxLength)
 {
@@ -224,9 +167,7 @@ int quicksort(int left, int right, struct cubelete *cubeleteList)
 
 
 int main() 
-{
-	srand48((long int)time(NULL));
-	
+{	
 	string atomfilename;
 	string xyzfilename;
 	
@@ -234,51 +175,120 @@ int main()
 	double boxly = 109.966122807;
 	double boxlz = 109.966122807;
 	
+	// doesnt do anything with these values currently, always assumes box is rectangular
+	double boxAngleX, boxAngleY, boxAngleZ;
+	
+	int numTrials = 5000;
+	
+	double minHistDist = 0.0;
+	double maxHistDist = 100.0;
+	double histStep = 0.1;
+	
+	long int randomSeed = 0;
+	
+	//cout << "hello" << endl;
+	
 	// read in input.dat
+	int fileLineCount = 0;
+	std::string line;
+	char chars[] = "'";
 	ifstream inputfile ("psd.in");
-	if (inputfile.is_open())
+	if(inputfile.is_open())
 	{
-		if(inputfile >> atomfilename and inputfile >> xyzfilename)
+		while(std::getline(inputfile,line))
 		{
+			if(!(line.empty() || line.substr(0,1).compare("!") == 0))
+			{
+				std::istringstream iss(line);
+			
+				if(fileLineCount == 0)
+				{
+					iss >> atomfilename;
+				}
+				else if(fileLineCount == 1)
+				{
+					iss >> xyzfilename;
+					//https://stackoverflow.com/questions/5891610/how-to-remove-certain-characters-from-a-string-in-c
+					for (unsigned int i = 0; i < strlen(chars); i++)
+					{
+						xyzfilename.erase (std::remove(xyzfilename.begin(), xyzfilename.end(), chars[i]), xyzfilename.end());
+					}
+				}
+				else if(fileLineCount == 2)
+					iss >> numTrials;
+				else if(fileLineCount == 3)
+					iss >> minHistDist;
+				else if(fileLineCount == 4)
+					iss >> histStep;
+				else if(fileLineCount == 5)
+					iss >> maxHistDist;
+				else if(fileLineCount == 6)
+					iss >> boxlx >> boxly >> boxlz;
+				else if(fileLineCount == 7)
+					iss >> boxAngleX >> boxAngleY >> boxAngleZ;
+				else if(fileLineCount == 8)
+				{
+					iss >> randomSeed;
+					break;
+				}
+					
+				fileLineCount++;
+			}
 		}
 		inputfile.close();
 	}
 	else
 	{
-		cout << "Could not find DREIDING.atoms" << endl;
+		cout << "Could not find psd.in" << endl;
 		return 0;
 	}
+		
 	//exit(0);
+	//srand48((long int)time(NULL));
+	srand48(randomSeed);
+	
 	// read in a file with bead diameters
 	double largestBeadDiameter = 0.0;
 	
 	int numBeadTypes = 0;
 	std::vector<beadType> beadSizes;
 	
+	fileLineCount = 0;
+	
 	ifstream beadtypefile (atomfilename.c_str());
 	if (beadtypefile.is_open())
 	{
-		if(beadtypefile >> numBeadTypes)
-		{
-			string tempString;
-			double tempSize;
-			while(beadtypefile >> tempString >> tempSize)
+		while(std::getline(beadtypefile,line))
+		{	
+			if(!(line.empty() || line.substr(0,1).compare("!") == 0))
 			{
-				if(tempString.compare("!") != 0)
-				{
-					//cout << tempString << endl;
+				std::istringstream iss(line);
 				
-					beadSizes.push_back(beadType());
-					beadSizes[beadSizes.size() - 1].id = tempString;
-					beadSizes[beadSizes.size() - 1].size = tempSize;
+				if(fileLineCount == 0)
+				{
+					iss >> numBeadTypes;
+					fileLineCount++;
+				}
+				else
+				{
+					string tempString;
+					double tempSize;
 					
-					if(tempSize > largestBeadDiameter)
+					if(iss >> tempString >> tempSize)
 					{
-						largestBeadDiameter = tempSize;
+						beadSizes.push_back(beadType());
+						beadSizes[beadSizes.size() - 1].id = tempString;
+						beadSizes[beadSizes.size() - 1].size = tempSize;
+						
+						if(tempSize > largestBeadDiameter)
+						{
+							largestBeadDiameter = tempSize;
+						}
 					}
 				}
 			}
 		}
+		
 		beadtypefile.close();
 	}
 	else
@@ -286,39 +296,56 @@ int main()
 		cout << "Could not find " << atomfilename << endl;
 		return 0;
 	}
-  
+	
 	// read in an .xyz file with system coordinates
+	fileLineCount = 0;
 	int numBeads;
 	std::vector<bead> systemBeads;
 	ifstream xyzfile (xyzfilename.c_str());
 	if (xyzfile.is_open())
 	{
-		if(xyzfile >> numBeads)
+		while(std::getline(xyzfile,line))
 		{
-			string tempString;
-			double tempX, tempY, tempZ;
-			
-			while(xyzfile >> tempString >> tempX >> tempY >> tempZ)
-			{		
-				//cout << tempString << " " << tempX << " " << tempY << " " << tempZ << endl;
-				systemBeads.push_back(bead());
-				systemBeads[systemBeads.size() - 1].id = tempString;
-				systemBeads[systemBeads.size() - 1].x = tempX;
-				systemBeads[systemBeads.size() - 1].y = tempY;
-				systemBeads[systemBeads.size() - 1].z = tempZ;
+			if(!(line.empty() || line.substr(0,1).compare("!") == 0))
+			{
+				std::istringstream iss(line);
 				
-				int tempIndex = 0;
-				while(tempString.compare(beadSizes[tempIndex].id) != 0)
+				if (fileLineCount == 0)
 				{
-					tempIndex++;
-					if(tempIndex >= beadSizes.size())
-					{
-						cout << "Couldn't find " << tempString << " type in " << atomfilename << endl;
-						return 1;
-					}
+					iss >> numBeads;
+					fileLineCount++;
 				}
-				
-				systemBeads[systemBeads.size() - 1].size = beadSizes[tempIndex].size;
+				else
+				{
+					string tempString;
+					double tempX, tempY, tempZ;
+					
+					if(iss >> tempString >> tempX >> tempY >> tempZ)
+					{
+						systemBeads.push_back(bead());
+						systemBeads[systemBeads.size() - 1].id = tempString;
+						systemBeads[systemBeads.size() - 1].x = tempX;
+						systemBeads[systemBeads.size() - 1].y = tempY;
+						systemBeads[systemBeads.size() - 1].z = tempZ;
+						
+						int tempIndex = 0;
+						while(tempString.compare(beadSizes[tempIndex].id) != 0)
+						{
+							tempIndex++;
+							if(tempIndex >= beadSizes.size())
+							{
+								cout << "Couldn't find " << tempString << " type in " << atomfilename << endl;
+								return 1;
+							}
+						}
+						
+						systemBeads[systemBeads.size() - 1].size = beadSizes[tempIndex].size;
+					}
+					else
+					{
+						cout << "Ignoring line: " << line << endl;
+					}	
+				}
 			}
 		}
 		xyzfile.close();
@@ -328,44 +355,30 @@ int main()
 		cout << "Could not find " << xyzfilename << endl;
 		return 0;
 	}
-	
-	//exit(0);
+
+	// done reading from files
 	
 	double gridSize = 5;
 	int numGridX = (int)(boxlx / gridSize);
 	int numGridY = (int)(boxly / gridSize);
 	int numGridZ = (int)(boxlz / gridSize);
 	
-
 	std::vector<int> *grid = new std::vector<int>[numGridX*numGridY*numGridZ];
 	
 	// put system beads into a grid
 	for(int i = 0; i < systemBeads.size(); i++)
 	{		
-		//cout << i << endl;
 		int bin = determineBin(systemBeads[i].x, systemBeads[i].y, systemBeads[i].z, gridSize, numGridX, numGridY, numGridZ);
-		
-		//cout << bin << " " << numGridX*numGridY*numGridZ << endl;
 		
 		(grid[bin]).push_back(i);
 	}
 	
-	/*int **gridLinks = (int**)malloc(numGridX*numGridY*numGridZ*sizeof(int*));
-	for(int i = 0; i < numGridX*numGridY*numGridZ; i++)
-	{
-		gridLinks[i] = (int*)malloc(27 * sizeof(int));
-	} 
-	
-	makelinks(gridLinks, numGridX, numGridY, numGridZ);*/
-	
-	//exit(0);
 	double cubeleteSize = 0.2;
 	
 	int numCubeX = (int)(boxlx / cubeleteSize);
 	int numCubeY = (int)(boxly / cubeleteSize);
 	int numCubeZ = (int)(boxlz / cubeleteSize);
 	
-
 	//stores the distances to closest system bead from position associated with [i*numCubeX^2 + j*numCubeY + k]
 	int cubeleteListSize = numCubeX*numCubeY*numCubeZ;
 	struct cubelete *cubeleteList = new struct cubelete[cubeleteListSize];
@@ -376,15 +389,6 @@ int main()
 	
 	cout << "Number of Cubeletes: " << cubeleteListSize << endl;
 	cout << "Memory for Cubelete List (GB): " << cubeleteListSize / 8.0 / 1000.0 / 1000.0 / 1000.0 * (64 + 3*2) << endl;
-	
-	int maxHistDist = 90.0;
-	double histStep = 1.0;
-	int histSize = (int)(maxHistDist / histStep);
-	int *hist = new int[histSize];
-	for(int h = 0; h < histSize; h++)
-	{
-		hist[h] = 0;
-	}
 	
 	// omp parallel statement here
 	#pragma omp parallel for
@@ -479,13 +483,17 @@ int main()
 	}
 	
 	// sort cubelets using quicksort
-	quicksort(0, cubeleteListSize, cubeleteList); 
-	
-	cout << cubeleteListSize << endl;
-	
+	quicksort(0, cubeleteListSize, cubeleteList); 	
 	
 	// randomly pick cubeletes
-	int numTrials = 5000;
+	//int numTrials = 5000;
+	
+	int histSize = (int)((maxHistDist - minHistDist)/ histStep);
+	int *hist = new int[histSize];
+	for(int h = 0; h < histSize; h++)
+	{
+		hist[h] = 0;
+	}
 	
 	int maxCubelete = 0;
 	
@@ -497,18 +505,12 @@ int main()
 		cout << "i: " << i << " " << tempRand << endl;
 		int randomCubeIndex = (int)(cubeleteListSize * tempRand);
 		
-		//cout << "after rand()" << endl;
-		//cout << randomCubeIndex << endl;
-		
 		double tempX = (cubeleteList[randomCubeIndex].x + 0.5) * cubeleteSize;
 		double tempY = (cubeleteList[randomCubeIndex].y + 0.5) * cubeleteSize;
 		double tempZ = (cubeleteList[randomCubeIndex].z + 0.5) * cubeleteSize;
 		
-		//cout << "before loop" << endl;
-		
 		for(int j = 0; j < cubeleteListSize; j++)
 		{
-			//cout << "j: " << j << endl;
 			double distX = (cubeleteList[j].x + 0.5) * cubeleteSize - tempX;
 			distX = periodicWrap(distX, boxlx);
 			double distY = (cubeleteList[j].y + 0.5) * cubeleteSize - tempY;
@@ -530,7 +532,7 @@ int main()
 					maxCubelete = j;
 				}
 				
-				int tempHistPos = (int)(cubeleteList[j].dist * 2.0 / histStep);
+				int tempHistPos = (int)((cubeleteList[j].dist * 2.0 - minHistDist) / histStep);
 				
 				for(int h = 0; h < tempHistPos; h++)
 				{
@@ -549,7 +551,7 @@ int main()
 	{
 		for (int h = 0; h < histSize; h++)
 		{
-			psdCummulative << h*histStep + 0.5*histStep << " " << (double)hist[h] / (double)hist[0] << endl;
+			psdCummulative << minHistDist + h*histStep + 0.5*histStep << " " << (double)hist[h] / (double)hist[0] << endl;
 		}
 		
 		psdCummulative.close();
@@ -564,7 +566,7 @@ int main()
 		{
 			double x1 = (h-1)*histStep + 0.5*histStep;
 			double x2 = (h+1)*histStep + 0.5*histStep;
-			psd << (h)*histStep + 0.5*histStep << " " << -((double)hist[h+1] - (double)hist[h-1] ) / (x2 - x1) / (double)hist[0] << endl;
+			psd << minHistDist + (h)*histStep + 0.5*histStep << " " << -((double)hist[h+1] - (double)hist[h-1] ) / (x2 - x1) / (double)hist[0] << endl;
 		}
 		
 		psd.close();
