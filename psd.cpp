@@ -29,20 +29,20 @@ struct bead {
 };
 
 struct cubelete {
-	double x;
-	double y;
-	double z;
+	int x;
+	int y;
+	int z;
 	
 	double dist;
 };
 
-int determineBin(bead b, double gridSize, int numGridX, int numGridY, int numGridZ)
+int determineBin(double x, double y, double z, double gridSize, int numGridX, int numGridY, int numGridZ)
 {
-	int cellx = (int)((b.x) / gridSize);
-	int celly = (int)((b.y) / gridSize);
-	int cellz = (int)((b.z) / gridSize);
+	int cellx = (int)((x) / gridSize);
+	int celly = (int)((y) / gridSize);
+	int cellz = (int)((z) / gridSize);
 	
-	// temporary fix for if bead is at 0.50
+	// temporary fix for if bead is at boundary
 	if(cellx == numGridX)
 	{
 		cellx = 0;
@@ -60,6 +60,92 @@ int determineBin(bead b, double gridSize, int numGridX, int numGridY, int numGri
 	
 	return bin;
 }
+
+void determineCells(double x, double y, double z, double gridSize, int numGridX, int numGridY, int numGridZ, int cells[3])
+{
+	int cellx = (int)((x) / gridSize);
+	int celly = (int)((y) / gridSize);
+	int cellz = (int)((z) / gridSize);
+	
+	// temporary fix for if bead is at boundary
+	if(cellx == numGridX)
+	{
+		cellx = 0;
+	}
+	if(celly == numGridY)
+	{
+		celly = 0;
+	}
+	if(cellz == numGridZ)
+	{
+		cellz = 0;
+	}
+	
+	cells[0] = cellx;
+	cells[1] = celly;
+	cells[2] = cellz;
+}
+
+/*void makelinks(int **link, int numGridX, int numGridY, int numGridZ)
+{
+	int rxlink[27], rylink[27], rzlink[27];
+	int icell[numGridX*numGridY*numGridZ], jcell[numGridX*numGridY*numGridZ], kcell[numGridX*numGridY*numGridZ];
+
+	unsigned int count = 0;
+	
+	for(int i = -1; i <= 1; i++)
+	{
+		for(int j = -1; j <= 1; j++)
+		{
+			for(int k = -1; k <= 1; k++)
+			{
+				rxlink[count] = i;
+				rylink[count] = j;
+				rzlink[count] = k;
+				
+				count++;
+			}
+		}
+	}
+
+	count = 0;
+	for(int i = 0; i < numGridX; i++)
+	{
+		for(int j = 0; j < numGridY; j++)
+		{
+			for (int k = 0; k < numGridZ; k++)
+			{
+				icell[count] = i;
+				jcell[count] = j;
+				kcell[count] = k;
+				count++;
+			}
+		}
+	}
+	
+	//cout << "C: " << count << endl;
+	
+	for(int i = 0; i < count; i++)
+	{
+		for(int j = 0; j < 27; j++)
+		{
+			int cellx = icell[i] + rxlink[j];
+			int celly = jcell[i] + rylink[j];
+			int cellz = kcell[i] + rzlink[j];
+
+			cellx = cellx - numGridX*(int)floor((double)(cellx)/(double)(numGridX));
+			celly = celly - numGridY*(int)floor((double)(celly)/(double)(numGridY));
+			cellz = cellz - numGridZ*(int)floor((double)(cellz)/(double)(numGridZ));
+
+			int b = (cellx*numGridY*numGridX) + (celly)*numGridY + cellz;
+
+			//cout << b << endl;
+			link[i][j] = b;
+		}
+		//exit(0);
+	}
+}*/
+
 
 double periodicWrap(double value, double boxLength)
 {
@@ -139,18 +225,21 @@ int quicksort(int left, int right, struct cubelete *cubeleteList)
 
 int main() 
 {
-	cout << "begin" << endl;
+	srand48((long int)time(NULL));
 	
 	string atomfilename;
 	string xyzfilename;
 	
+	double boxlx = 109.966122807;
+	double boxly = 109.966122807;
+	double boxlz = 109.966122807;
+	
 	// read in input.dat
-	ifstream inputfile ("input.dat");
+	ifstream inputfile ("psd.in");
 	if (inputfile.is_open())
 	{
 		if(inputfile >> atomfilename and inputfile >> xyzfilename)
 		{
-			
 		}
 		inputfile.close();
 	}
@@ -159,8 +248,10 @@ int main()
 		cout << "Could not find DREIDING.atoms" << endl;
 		return 0;
 	}
-	
+	//exit(0);
 	// read in a file with bead diameters
+	double largestBeadDiameter = 0.0;
+	
 	int numBeadTypes = 0;
 	std::vector<beadType> beadSizes;
 	
@@ -175,11 +266,16 @@ int main()
 			{
 				if(tempString.compare("!") != 0)
 				{
-					cout << tempString << endl;
+					//cout << tempString << endl;
 				
 					beadSizes.push_back(beadType());
 					beadSizes[beadSizes.size() - 1].id = tempString;
 					beadSizes[beadSizes.size() - 1].size = tempSize;
+					
+					if(tempSize > largestBeadDiameter)
+					{
+						largestBeadDiameter = tempSize;
+					}
 				}
 			}
 		}
@@ -203,7 +299,8 @@ int main()
 			double tempX, tempY, tempZ;
 			
 			while(xyzfile >> tempString >> tempX >> tempY >> tempZ)
-			{				
+			{		
+				//cout << tempString << " " << tempX << " " << tempY << " " << tempZ << endl;
 				systemBeads.push_back(bead());
 				systemBeads[systemBeads.size() - 1].id = tempString;
 				systemBeads[systemBeads.size() - 1].x = tempX;
@@ -232,40 +329,56 @@ int main()
 		return 0;
 	}
 	
+	//exit(0);
 	
-	double boxlx = 25.83200;
-	double boxly = 25.83200;
-	double boxlz = 25.83200;
-	
-	double gridSize = 0.5;
+	double gridSize = 5;
 	int numGridX = (int)(boxlx / gridSize);
 	int numGridY = (int)(boxly / gridSize);
 	int numGridZ = (int)(boxlz / gridSize);
 	
-	std::vector<bead*> *grid = new std::vector<bead*>[numGridX*numGridY*numGridZ];
+
+	std::vector<int> *grid = new std::vector<int>[numGridX*numGridY*numGridZ];
 	
 	// put system beads into a grid
 	for(int i = 0; i < systemBeads.size(); i++)
 	{		
-		int bin = determineBin(systemBeads[i], gridSize, numGridX, numGridY, numGridZ);
+		//cout << i << endl;
+		int bin = determineBin(systemBeads[i].x, systemBeads[i].y, systemBeads[i].z, gridSize, numGridX, numGridY, numGridZ);
 		
 		//cout << bin << " " << numGridX*numGridY*numGridZ << endl;
 		
-		(grid[bin]).push_back(&(systemBeads[i]));
+		(grid[bin]).push_back(i);
 	}
 	
+	/*int **gridLinks = (int**)malloc(numGridX*numGridY*numGridZ*sizeof(int*));
+	for(int i = 0; i < numGridX*numGridY*numGridZ; i++)
+	{
+		gridLinks[i] = (int*)malloc(27 * sizeof(int));
+	} 
+	
+	makelinks(gridLinks, numGridX, numGridY, numGridZ);*/
+	
+	//exit(0);
 	double cubeleteSize = 0.2;
 	
 	int numCubeX = (int)(boxlx / cubeleteSize);
 	int numCubeY = (int)(boxly / cubeleteSize);
 	int numCubeZ = (int)(boxlz / cubeleteSize);
 	
+
 	//stores the distances to closest system bead from position associated with [i*numCubeX^2 + j*numCubeY + k]
 	int cubeleteListSize = numCubeX*numCubeY*numCubeZ;
 	struct cubelete *cubeleteList = new struct cubelete[cubeleteListSize];
+	for(int i = 0; i < cubeleteListSize; i++)
+	{
+		cubeleteList[i].dist = boxlx;
+	}
 	
-	int maxHistDist = 40.0;
-	double histStep = 0.1;
+	cout << "Number of Cubeletes: " << cubeleteListSize << endl;
+	cout << "Memory for Cubelete List (GB): " << cubeleteListSize / 8.0 / 1000.0 / 1000.0 / 1000.0 * (64 + 3*2) << endl;
+	
+	int maxHistDist = 90.0;
+	double histStep = 1.0;
 	int histSize = (int)(maxHistDist / histStep);
 	int *hist = new int[histSize];
 	for(int h = 0; h < histSize; h++)
@@ -281,44 +394,86 @@ int main()
 		double tempX = (i + 0.5) * cubeleteSize;
 		for(int j = 0; j < numCubeY; j++)
 		{
+			//cout << "j: " << j << endl;
 			double tempY = (j + 0.5) * cubeleteSize;
 			for(int k = 0; k < numCubeZ; k++)
 			{
+				//cout << "k: " << k << endl;
 				double tempZ = (k + 0.5) * cubeleteSize;
 				
 				int index = i*numCubeX*numCubeX + j*numCubeY + k;
 				// find distance from [i*numCubeX^2 + j*numCubeY + k] to nearest system bead
-				cubeleteList[index].x = tempX;
-				cubeleteList[index].y = tempY;
-				cubeleteList[index].z = tempZ;
-					
-				//for(int b = -)
-				for(int b = 0; b < systemBeads.size(); b++)
-				//for(int b = 0; b < 1; b++)
+				cubeleteList[index].x = i;
+				cubeleteList[index].y = j;
+				cubeleteList[index].z = k;
+				
+				bool notDone = true;
+				int maxGrid = 0;
+				
+				int cells[3];
+				
+				determineCells(tempX, tempY, tempZ, gridSize, numGridX, numGridY, numGridZ, cells);
+				
+				while(notDone)
 				{
-					// need to periodically wrap these coordinates?
-					// can speed this up by griding system originally?
-					double xDist = tempX - systemBeads[b].x;
-					xDist = periodicWrap(xDist, boxlx);
-					double yDist = tempY - systemBeads[b].y;
-					yDist = periodicWrap(yDist, boxly);
-					double zDist = tempZ - systemBeads[b].z;
-					zDist = periodicWrap(zDist, boxlz);
-					
-					double dist = xDist*xDist + yDist*yDist + zDist*zDist;
-					dist = sqrt(dist);
-					
-					dist = dist - 0.5*systemBeads[b].size;
-					
-					//dist = dist * 2.0;
-					
-					if (dist < cubeleteList[index].dist || b == 0)
+					for(int m = -maxGrid; m <= maxGrid; m++)
 					{
-						cubeleteList[index].dist = dist;
-						
+						for(int n = -maxGrid; n <= maxGrid; n++)
+						{
+							for(int o = -maxGrid; o <= maxGrid; o++)
+							{
+								if(abs(m) == maxGrid || abs(n) == maxGrid || abs(o) == maxGrid)
+								{
+									int cellx = cells[0] + m;
+									int celly = cells[1] + n;
+									int cellz = cells[2] + o;
+									
+									cellx = cellx - numGridX*(int)floor((double)(cellx)/(double)(numGridX));
+									celly = celly - numGridY*(int)floor((double)(celly)/(double)(numGridY));
+									cellz = cellz - numGridZ*(int)floor((double)(cellz)/(double)(numGridZ));
+															
+									int tempGrid = (cellx*numGridY*numGridX) + (celly)*numGridY + cellz;
+									
+									// now search through all systemBeads in tempGrid
+									std::vector<int> currGrid = grid[tempGrid];
+									for(int v = 0; v < currGrid.size(); v++)
+									{
+										int tempBead = currGrid[v];
+										
+										double xDist = tempX - systemBeads[tempBead].x;
+										xDist = periodicWrap(xDist, boxlx);
+										double yDist = tempY - systemBeads[tempBead].y;
+										yDist = periodicWrap(yDist, boxly);
+										double zDist = tempZ - systemBeads[tempBead].z;
+										zDist = periodicWrap(zDist, boxlz);
+										
+										double dist = xDist*xDist + yDist*yDist + zDist*zDist;
+										dist = sqrt(dist);
+										
+										dist = dist - 0.5*systemBeads[tempBead].size;
+										
+										if(dist < cubeleteList[index].dist)
+										{
+											cubeleteList[index].dist = dist;
+										}
+									}
+								}
+							}
+						}
+					}
+					
+					/* if the minimum distance stored is less than the possible distance from cubelette center to surface of a system bead
+					   lying outside the already considered grids then don't need to search further grids*/
+					if(cubeleteList[index].dist <= gridSize*maxGrid - 0.5*(largestBeadDiameter))
+					{
+						notDone = false;
+					}
+					else
+					{
+						//add another layer
+						maxGrid += 1;
 					}
 				}
-				//cubeleteList[i*numCubeX*numCubeX + j*numCubeY + k] = dist;
 			}
 		}
 	}
@@ -327,41 +482,38 @@ int main()
 	quicksort(0, cubeleteListSize, cubeleteList); 
 	
 	cout << cubeleteListSize << endl;
-	/*for(int i = 0; i < numCubeX*numCubeY*numCubeZ; i++)
-	{
-		cout << i << " " << cubeleteList[i].dist << endl;
-		cout << cubeleteList[i].x << " " << cubeleteList[i].y << " " << cubeleteList[i].z << endl;
-		exit(0);
-	}*/
 	
 	
-	// randomly pick cubelete
-	int numTrials = 1000;
+	// randomly pick cubeletes
+	int numTrials = 5000;
+	
+	int maxCubelete = 0;
 	
 	#pragma omp parallel for
 	for(int i = 0; i < numTrials; i++)
 	{
-		double tempRand = rand() / 32768.0;
+		//double tempRand = rand() / 32768.0;
+		double tempRand = drand48();
 		cout << "i: " << i << " " << tempRand << endl;
 		int randomCubeIndex = (int)(cubeleteListSize * tempRand);
 		
 		//cout << "after rand()" << endl;
 		//cout << randomCubeIndex << endl;
 		
-		double tempX = cubeleteList[randomCubeIndex].x;
-		double tempY = cubeleteList[randomCubeIndex].y;
-		double tempZ = cubeleteList[randomCubeIndex].z;
+		double tempX = (cubeleteList[randomCubeIndex].x + 0.5) * cubeleteSize;
+		double tempY = (cubeleteList[randomCubeIndex].y + 0.5) * cubeleteSize;
+		double tempZ = (cubeleteList[randomCubeIndex].z + 0.5) * cubeleteSize;
 		
 		//cout << "before loop" << endl;
 		
 		for(int j = 0; j < cubeleteListSize; j++)
 		{
 			//cout << "j: " << j << endl;
-			double distX = cubeleteList[j].x - tempX;
+			double distX = (cubeleteList[j].x + 0.5) * cubeleteSize - tempX;
 			distX = periodicWrap(distX, boxlx);
-			double distY = cubeleteList[j].y - tempY;
+			double distY = (cubeleteList[j].y + 0.5) * cubeleteSize - tempY;
 			distY = periodicWrap(distY, boxly);
-			double distZ = cubeleteList[j].z - tempZ;
+			double distZ = (cubeleteList[j].z + 0.5) * cubeleteSize - tempZ;
 			distZ = periodicWrap(distZ, boxlz);
 			
 			distX = distX*distX;
@@ -373,7 +525,10 @@ int main()
 			if(dist <= cubeleteList[j].dist)
 			{
 				// this is the largest sphere which randomCubeIndex can fit inside
-				//cout << "j: " << j << endl;
+				if(j > maxCubelete)
+				{
+					maxCubelete = j;
+				}
 				
 				int tempHistPos = (int)(cubeleteList[j].dist * 2.0 / histStep);
 				
@@ -383,15 +538,37 @@ int main()
 				}
 				break;
 			}
-				
-			
 		}
 	}
 	
-	for (int h = 0; h < histSize; h++)
+	cout << (maxCubelete + 1.0) / (double)cubeleteListSize * 100.0 << "% cubelete list utilization" << endl;
+	
+	ofstream psdCummulative;
+	psdCummulative.open("psd_cummulative.out");
+	if(psdCummulative.is_open())
 	{
-		cout << h*histStep + 0.5*histStep << " " << hist[h] / hist[0] << endl;
+		for (int h = 0; h < histSize; h++)
+		{
+			psdCummulative << h*histStep + 0.5*histStep << " " << (double)hist[h] / (double)hist[0] << endl;
+		}
+		
+		psdCummulative.close();
 	}
-	cout << "end" << endl;
+	
+	// derivative
+	ofstream psd;
+	psd.open("psd.out");
+	if(psd.is_open())
+	{
+		for (int h = 1; h < histSize - 1; h++)
+		{
+			double x1 = (h-1)*histStep + 0.5*histStep;
+			double x2 = (h+1)*histStep + 0.5*histStep;
+			psd << (h)*histStep + 0.5*histStep << " " << -((double)hist[h+1] - (double)hist[h-1] ) / (x2 - x1) / (double)hist[0] << endl;
+		}
+		
+		psd.close();
+	}
+
 	return 0;
 }
