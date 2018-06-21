@@ -569,6 +569,72 @@ int main()
 		
 		psd.close();
 	}
+	
+	
+	//create numKVectors unit vectors equally spaced on surface of sphere
+	//https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
+	/*int numPoints = 500;
+	
+	double** kVec = new double*[numPoints];
+	for(int k = 0; k < numPoints; k++)
+	{
+		kVec[k] = new double[3];
+	}
+	
+	int nCount = 0;
+	const double pi = 3.14159265359;
+	double a = 4.0*pi*1.0*1.0 / (double)numPoints;
+	double Mtheta = round(pi / sqrt(a));
+	double dtheta = pi / Mtheta;
+	double dphi = a / dtheta;
+	
+	for(int m = 0; m < (int)Mtheta; m++)
+	{
+		double theta = pi * (m + 0.5) / Mtheta;
+		double Mphi = round(2*pi*sin(theta) / dphi);
+		
+		cout << Mphi << endl;
+		
+		for(int n = 0; n < (int)Mphi; n++)
+		{
+			if(nCount >= numPoints)
+				break;
+			
+			double phi = 2*pi*n / Mphi;
+			
+			kVec[nCount][0] = sin(theta)*cos(phi);
+			kVec[nCount][1] = sin(theta)*sin(phi);
+			kVec[nCount][2] = cos(theta);
+			
+			nCount++;
+		}
+	}*/
+	
+	// output .xyz
+	ofstream xyzFile;
+	xyzFile.open("largestPores.xyz");
+	int smallestPoreIndex = (int)(cubeleteListSize * 0.05);
+	if(xyzFile.is_open())
+	{
+		xyzFile << smallestPoreIndex << endl << endl;
+		for(int i = 0; i < smallestPoreIndex; i++)
+		{
+			double tempX = (cubeleteList[i].x + 0.5) * cubeleteSize;
+			double tempY = (cubeleteList[i].y + 0.5) * cubeleteSize;
+			double tempZ = (cubeleteList[i].z + 0.5) * cubeleteSize;
+			
+			xyzFile << 1 << " " << tempX << " " << tempY << " " << tempZ << endl;	
+			
+			//double tempRadius = cubeleteList[i].dist;
+			//xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ << endl;
+			/*cout << tempRadius << endl;
+			
+			for(int k = 0; k < numPoints; k++)
+			{
+				xyzFile << 1 << " " << tempX + kVec[k][0] * tempRadius << " " << tempY + kVec[k][1] * tempRadius << " " << tempZ + kVec[k][2] * tempRadius << endl;	
+			}*/
+		}
+	}
 
 	return 0;
 }
