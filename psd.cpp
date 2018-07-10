@@ -184,6 +184,8 @@ int main()
 	double minHistDist = 0.0;
 	double maxHistDist = 100.0;
 	double histStep = 0.1;
+		
+	double cubeleteSize = 0.5;
 	
 	long int randomSeed = 0;
 	
@@ -370,8 +372,6 @@ int main()
 		
 		(grid[bin]).push_back(i);
 	}
-	
-	double cubeleteSize = 0.2;
 	
 	int numCubeX = (int)(boxlx / cubeleteSize);
 	int numCubeY = (int)(boxly / cubeleteSize);
@@ -611,9 +611,9 @@ int main()
 	}*/
 	
 	// output .xyz
-	ofstream xyzFile;
+	/*ofstream xyzFile;
 	xyzFile.open("largestPores.xyz");
-	int smallestPoreIndex = (int)(cubeleteListSize * 0.05);
+	int smallestPoreIndex = (int)(cubeleteListSize * 0.1);
 	if(xyzFile.is_open())
 	{
 		xyzFile << smallestPoreIndex << endl << endl;
@@ -623,18 +623,19 @@ int main()
 			double tempY = (cubeleteList[i].y + 0.5) * cubeleteSize;
 			double tempZ = (cubeleteList[i].z + 0.5) * cubeleteSize;
 			
-			xyzFile << 1 << " " << tempX << " " << tempY << " " << tempZ << endl;	
+			//xyzFile << 1 << " " << tempX << " " << tempY << " " << tempZ << endl;	
 			
-			//double tempRadius = cubeleteList[i].dist;
-			//xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ << endl;
+			double tempRadius = cubeleteList[i].dist;
+			
+			xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ << endl;
 			/*cout << tempRadius << endl;
 			
 			for(int k = 0; k < numPoints; k++)
 			{
 				xyzFile << 1 << " " << tempX + kVec[k][0] * tempRadius << " " << tempY + kVec[k][1] * tempRadius << " " << tempZ + kVec[k][2] * tempRadius << endl;	
 			}*/
-		}
-	}
+	//	}
+	//}
 
 	return 0;
 }
