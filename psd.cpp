@@ -171,9 +171,9 @@ int main()
 	string atomfilename;
 	string xyzfilename;
 	
-	double boxlx = 109.966122807;
-	double boxly = 109.966122807;
-	double boxlz = 109.966122807;
+	double boxlx = 10.0;
+	double boxly = 10.0;
+	double boxlz = 10.0;
 	
 	// doesnt do anything with these values currently, always assumes box is rectangular
 	double boxAngleX, boxAngleY, boxAngleZ;
@@ -185,7 +185,7 @@ int main()
 	double maxHistDist = 100.0;
 	double histStep = 0.1;
 		
-	double cubeleteSize = 0.5;
+	double cubeleteSize = 1.0;
 	
 	long int randomSeed = 0;
 	
@@ -392,15 +392,12 @@ int main()
 	#pragma omp parallel for
 	for(int i = 0; i < numCubeX; i++)
 	{
-		cout << i << " " << numCubeX << endl;
 		double tempX = (i + 0.5) * cubeleteSize;
 		for(int j = 0; j < numCubeY; j++)
 		{
-			//cout << "j: " << j << endl;
 			double tempY = (j + 0.5) * cubeleteSize;
 			for(int k = 0; k < numCubeZ; k++)
 			{
-				//cout << "k: " << k << endl;
 				double tempZ = (k + 0.5) * cubeleteSize;
 				
 				int index = i*numCubeX*numCubeX + j*numCubeY + k;
@@ -472,7 +469,7 @@ int main()
 					}
 					else
 					{
-						//add another layer
+						//add another grid layer
 						maxGrid += 1;
 					}
 				}
@@ -483,9 +480,7 @@ int main()
 	// sort cubelets using quicksort
 	quicksort(0, cubeleteListSize, cubeleteList); 	
 	
-	// randomly pick cubeletes
-	//int numTrials = 5000;
-	
+	// randomly pick cubeletes	
 	int histSize = (int)((maxHistDist)/ histStep);
 	int *hist = new int[histSize];
 	for(int h = 0; h < histSize; h++)
@@ -495,13 +490,23 @@ int main()
 	
 	int maxCubelete = 0;
 	
+	int zeroCubeletePosition = 0;
+	// search through cubeleteList backwards to find when the position where values start being positive or zero
+	for(int i = cubeleteListSize - 1; i >= 0; i--)
+	{
+		if(cubeleteList[i].size >= 0.0)
+		{
+			zeroCubeletPosition = i;
+		}
+	}
+	
 	#pragma omp parallel for
 	for(int i = 0; i < numTrials; i++)
 	{
 		//double tempRand = rand() / 32768.0;
 		double tempRand = drand48();
-		cout << "i: " << i << " " << tempRand << endl;
-		int randomCubeIndex = (int)(cubeleteListSize * tempRand);
+		//cout << "i: " << i << " " << tempRand << endl;
+		int randomCubeIndex = (int)(zeroCubeletPosition * tempRand);
 		
 		double tempX = (cubeleteList[randomCubeIndex].x + 0.5) * cubeleteSize;
 		double tempY = (cubeleteList[randomCubeIndex].y + 0.5) * cubeleteSize;
@@ -571,6 +576,7 @@ int main()
 	}
 	
 	
+	const double pi = 3.14159265359;
 	//create numKVectors unit vectors equally spaced on surface of sphere
 	//https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
 	/*int numPoints = 500;
@@ -582,7 +588,7 @@ int main()
 	}
 	
 	int nCount = 0;
-	const double pi = 3.14159265359;
+	
 	double a = 4.0*pi*1.0*1.0 / (double)numPoints;
 	double Mtheta = round(pi / sqrt(a));
 	double dtheta = pi / Mtheta;
@@ -611,8 +617,8 @@ int main()
 	}*/
 	
 	// output .xyz
-	/*ofstream xyzFile;
-	xyzFile.open("largestPores.xyz");
+	ofstream xyzFile;
+	xyzFile.open("Pores.xyz");
 	int smallestPoreIndex = (int)(cubeleteListSize * 0.1);
 	if(xyzFile.is_open())
 	{
@@ -627,15 +633,17 @@ int main()
 			
 			double tempRadius = cubeleteList[i].dist;
 			
-			xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ << endl;
+			if(tempRadius > 0.5 and tempRadius <= 1.5)
+				//xyzFile << tempX << " " << tempY << " " << tempZ << " " << tempRadius*tempRadius * pi << endl;
+				xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ <<  endl;
 			/*cout << tempRadius << endl;
 			
 			for(int k = 0; k < numPoints; k++)
 			{
 				xyzFile << 1 << " " << tempX + kVec[k][0] * tempRadius << " " << tempY + kVec[k][1] * tempRadius << " " << tempZ + kVec[k][2] * tempRadius << endl;	
 			}*/
-	//	}
-	//}
+		}
+	}
 
 	return 0;
 }
