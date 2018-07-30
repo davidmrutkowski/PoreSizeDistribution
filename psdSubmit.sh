@@ -19,7 +19,7 @@ date
 
 module load ufrc intel
 
-export OMP_NUM_THREADS=4
+export OMP_NUM_THREADS=16
  
 ./psd > log.out 2>&1
 

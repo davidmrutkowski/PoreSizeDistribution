@@ -9,3 +9,15 @@ ff.atoms
 48956
 T
 1.0,90
+
+!1.  file containing the atom types + diameters (sigmas) of the atoms 
+!2.  file containing the coordinates of the porous solid
+!3.  number of cycles (N); i.e. how many total points will be attempted.
+!4.  cubelete (pore) diameter in Angstroms
+!5.  pore diameter increment in Angstroms (currently does nothing)
+!6.  maximum probe diameter in Angstroms
+!7.  length of the unit cell
+!8.  unit cell angles (yz, xz, xy)
+!9.  random number generator seed
+!10. logical varibale: T if you want to save coordinates of the probes of specific diameter, F - no
+!11. probe diameter range within which to save the coordinates (currently does nothing)
