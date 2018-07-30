@@ -232,16 +232,18 @@ int main()
 				else if(fileLineCount == 8)
 				{
 					iss >> randomSeed;
-					break;
 				}
 				else if(fileLineCount == 9)
 				{
 					string tempString;
 					iss >> tempString;
+					
 					if(tempString.compare("T") == 0 || tempString.compare("1") == 0)
 					{
 						outputXYZ = true;
 					}
+					
+					break;
 				}
 					
 				fileLineCount++;
@@ -586,47 +588,6 @@ int main()
 		
 		psd.close();
 	}
-	
-	
-	const double pi = 3.14159265359;
-	//create numKVectors unit vectors equally spaced on surface of sphere
-	//https://www.cmu.edu/biolphys/deserno/pdf/sphere_equi.pdf
-	/*int numPoints = 500;
-	
-	double** kVec = new double*[numPoints];
-	for(int k = 0; k < numPoints; k++)
-	{
-		kVec[k] = new double[3];
-	}
-	
-	int nCount = 0;
-	
-	double a = 4.0*pi*1.0*1.0 / (double)numPoints;
-	double Mtheta = round(pi / sqrt(a));
-	double dtheta = pi / Mtheta;
-	double dphi = a / dtheta;
-	
-	for(int m = 0; m < (int)Mtheta; m++)
-	{
-		double theta = pi * (m + 0.5) / Mtheta;
-		double Mphi = round(2*pi*sin(theta) / dphi);
-		
-		cout << Mphi << endl;
-		
-		for(int n = 0; n < (int)Mphi; n++)
-		{
-			if(nCount >= numPoints)
-				break;
-			
-			double phi = 2*pi*n / Mphi;
-			
-			kVec[nCount][0] = sin(theta)*cos(phi);
-			kVec[nCount][1] = sin(theta)*sin(phi);
-			kVec[nCount][2] = cos(theta);
-			
-			nCount++;
-		}
-	}*/
 	
 	// output .xyz
 	// outputs location of largest 10% of cubeletes with indexing according to the stored radius 
