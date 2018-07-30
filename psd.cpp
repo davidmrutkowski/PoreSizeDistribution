@@ -42,9 +42,9 @@ struct cubelete {
 
 int determineBin(double x, double y, double z, double gridSize, int numGridX, int numGridY, int numGridZ)
 {
-	int cellx = (int)((x) / gridSize);
-	int celly = (int)((y) / gridSize);
-	int cellz = (int)((z) / gridSize);
+	int cellx = (int)(x / gridSize);
+	int celly = (int)(y / gridSize);
+	int cellz = (int)(z / gridSize);
 	
 	// temporary fix for if bead is at boundary
 	if(cellx == numGridX)
@@ -60,16 +60,16 @@ int determineBin(double x, double y, double z, double gridSize, int numGridX, in
 		cellz = 0;
 	}
 	
-	int bin = (cellx*numGridY*numGridX) + (celly)*numGridY + cellz;
+	int bin = (cellx*numGridY*numGridZ) + (celly)*numGridZ + cellz;
 	
 	return bin;
 }
 
 void determineCells(double x, double y, double z, double gridSize, int numGridX, int numGridY, int numGridZ, int cells[3])
 {
-	int cellx = (int)((x) / gridSize);
-	int celly = (int)((y) / gridSize);
-	int cellz = (int)((z) / gridSize);
+	int cellx = (int)(x / gridSize);
+	int celly = (int)(y / gridSize);
+	int cellz = (int)(z / gridSize);
 	
 	// temporary fix for if bead is at boundary
 	if(cellx == numGridX)
@@ -168,6 +168,7 @@ int quicksort(int left, int right, struct cubelete *cubeleteList)
 
 int main() 
 {	
+	
 	string atomfilename;
 	string xyzfilename;
 	
@@ -310,6 +311,11 @@ int main()
 		return 0;
 	}
 	
+	
+	double minX = 0.0;
+	double minY = 0.0;
+	double minZ = 0.0;
+	
 	// read in an .xyz file with system coordinates
 	fileLineCount = 0;
 	int numBeads;
@@ -326,6 +332,7 @@ int main()
 				if (fileLineCount == 0)
 				{
 					iss >> numBeads;
+					
 					fileLineCount++;
 				}
 				else
@@ -334,12 +341,19 @@ int main()
 					double tempX, tempY, tempZ;
 					
 					if(iss >> tempString >> tempX >> tempY >> tempZ)
-					{
+					{					
 						systemBeads.push_back(bead());
 						systemBeads[systemBeads.size() - 1].id = tempString;
 						systemBeads[systemBeads.size() - 1].x = tempX;
 						systemBeads[systemBeads.size() - 1].y = tempY;
 						systemBeads[systemBeads.size() - 1].z = tempZ;
+						
+						if(tempX < minX)
+							minX = tempX;
+						if(tempY < minY)
+							minY = tempY;
+						if(tempZ < minZ)
+							minZ = tempZ;
 						
 						int tempIndex = 0;
 						while(tempString.compare(beadSizes[tempIndex].id) != 0)
@@ -371,7 +385,16 @@ int main()
 
 	// done reading from files
 	
-	double gridSize = 5;
+	// shift simulation box if necessary (any negative values values)
+	for(int i = 0; i < systemBeads.size(); i++)
+	{
+		systemBeads[i].x -= minX;
+		systemBeads[i].y -= minY;
+		systemBeads[i].z -= minZ;
+	}
+	
+	// should automatically determine this based on numbered of particles evenly dispersed in system
+	double gridSize = 1.0;
 	int numGridX = (int)(boxlx / gridSize);
 	int numGridY = (int)(boxly / gridSize);
 	int numGridZ = (int)(boxlz / gridSize);
@@ -380,8 +403,15 @@ int main()
 	
 	// put system beads into a grid
 	for(int i = 0; i < systemBeads.size(); i++)
-	{		
+	{
 		int bin = determineBin(systemBeads[i].x, systemBeads[i].y, systemBeads[i].z, gridSize, numGridX, numGridY, numGridZ);
+		
+		if(bin >= numGridX*numGridY*numGridZ)
+		{
+			cout << "Error bin too big: " << bin << endl;
+			cout << systemBeads[i].x << " " << systemBeads[i].y << " " << systemBeads[i].z << endl;
+			cout << boxlx << " " << boxly << " " << boxlz << endl;
+		}
 		
 		(grid[bin]).push_back(i);
 	}
@@ -395,7 +425,7 @@ int main()
 	struct cubelete *cubeleteList = new struct cubelete[cubeleteListSize];
 	for(int i = 0; i < cubeleteListSize; i++)
 	{
-		cubeleteList[i].dist = boxlx;
+		cubeleteList[i].dist = boxlx*boxly*boxlz;
 	}
 	
 	cout << "Number of Cubeletes: " << cubeleteListSize << endl;
@@ -404,7 +434,7 @@ int main()
 	// omp parallel statement here
 	#pragma omp parallel for
 	for(int i = 0; i < numCubeX; i++)
-	{
+	{		
 		double tempX = (i + 0.5) * cubeleteSize;
 		for(int j = 0; j < numCubeY; j++)
 		{
@@ -413,7 +443,8 @@ int main()
 			{
 				double tempZ = (k + 0.5) * cubeleteSize;
 				
-				int index = i*numCubeX*numCubeX + j*numCubeY + k;
+				int index = i*numCubeY*numCubeZ + j*numCubeZ + k;
+				
 				// find distance from [i*numCubeX^2 + j*numCubeY + k] to nearest system bead
 				cubeleteList[index].x = i;
 				cubeleteList[index].y = j;
@@ -444,7 +475,7 @@ int main()
 									celly = celly - numGridY*(int)floor((double)(celly)/(double)(numGridY));
 									cellz = cellz - numGridZ*(int)floor((double)(cellz)/(double)(numGridZ));
 															
-									int tempGrid = (cellx*numGridY*numGridX) + (celly)*numGridY + cellz;
+									int tempGrid = (cellx*numGridY*numGridZ) + (celly)*numGridZ + cellz;
 									
 									// now search through all systemBeads in tempGrid
 									std::vector<int> currGrid = grid[tempGrid];
@@ -474,8 +505,9 @@ int main()
 						}
 					}
 					
-					/* if the minimum distance stored is less than the possible distance from cubelette center to surface of a system bead
-					   lying outside the already considered grids then don't need to search further grids*/
+					// need to check this again
+					// if the minimum distance stored is less than the possible distance from cubelette center to surface of a system bead
+					// lying outside the already considered grids then don't need to search further grids
 					if(cubeleteList[index].dist <= gridSize*maxGrid - 0.5*(largestBeadDiameter))
 					{
 						notDone = false;
@@ -491,7 +523,7 @@ int main()
 	}
 	
 	// sort cubelets using quicksort
-	quicksort(0, cubeleteListSize, cubeleteList); 	
+	quicksort(0, cubeleteListSize-1, cubeleteList); 	
 	
 	// randomly pick cubeletes	
 	int histSize = (int)((maxHistDist)/ histStep);
@@ -503,7 +535,7 @@ int main()
 	
 	int maxCubelete = 0;
 	
-	int zeroCubeletePosition = 0;
+	int zeroCubeletePosition = cubeleteListSize - 1;
 	// search through cubeleteList backwards to find when the position where values start being positive or zero
 	for(int i = cubeleteListSize - 1; i >= 0; i--)
 	{
@@ -609,6 +641,8 @@ int main()
 				
 				xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ <<  endl;
 			}
+			
+			xyzFile.close();
 		}
 	}
 
