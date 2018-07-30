@@ -189,6 +189,8 @@ int main()
 	
 	long int randomSeed = 0;
 	
+	bool outputXYZ = false;
+	
 	// read in input.dat
 	int fileLineCount = 0;
 	std::string line;
@@ -231,6 +233,15 @@ int main()
 				{
 					iss >> randomSeed;
 					break;
+				}
+				else if(fileLineCount == 9)
+				{
+					string tempString;
+					iss >> tempString;
+					if(tempString[0].compare("T") == 0 || tempString[0].compare("1") == 0)
+					{
+						outputXYZ = true;
+					}
 				}
 					
 				fileLineCount++;
@@ -494,9 +505,10 @@ int main()
 	// search through cubeleteList backwards to find when the position where values start being positive or zero
 	for(int i = cubeleteListSize - 1; i >= 0; i--)
 	{
-		if(cubeleteList[i].size >= 0.0)
+		if(cubeleteList[i].dist >= 0.0)
 		{
-			zeroCubeletPosition = i;
+			zeroCubeletePosition = i;
+			break;
 		}
 	}
 	
@@ -506,7 +518,7 @@ int main()
 		//double tempRand = rand() / 32768.0;
 		double tempRand = drand48();
 		//cout << "i: " << i << " " << tempRand << endl;
-		int randomCubeIndex = (int)(zeroCubeletPosition * tempRand);
+		int randomCubeIndex = (int)(zeroCubeletePosition * tempRand);
 		
 		double tempX = (cubeleteList[randomCubeIndex].x + 0.5) * cubeleteSize;
 		double tempY = (cubeleteList[randomCubeIndex].y + 0.5) * cubeleteSize;
@@ -617,31 +629,27 @@ int main()
 	}*/
 	
 	// output .xyz
-	ofstream xyzFile;
-	xyzFile.open("Pores.xyz");
-	int smallestPoreIndex = (int)(cubeleteListSize * 0.1);
-	if(xyzFile.is_open())
+	if(outputXYZ == true)
 	{
-		xyzFile << smallestPoreIndex << endl << endl;
-		for(int i = 0; i < smallestPoreIndex; i++)
+		ofstream xyzFile;
+		xyzFile.open("Pores.xyz");
+		int smallestPoreIndex = (int)(cubeleteListSize * 0.1);
+		if(xyzFile.is_open())
 		{
-			double tempX = (cubeleteList[i].x + 0.5) * cubeleteSize;
-			double tempY = (cubeleteList[i].y + 0.5) * cubeleteSize;
-			double tempZ = (cubeleteList[i].z + 0.5) * cubeleteSize;
-			
-			//xyzFile << 1 << " " << tempX << " " << tempY << " " << tempZ << endl;	
-			
-			double tempRadius = cubeleteList[i].dist;
-			
-			if(tempRadius > 0.5 and tempRadius <= 1.5)
-				//xyzFile << tempX << " " << tempY << " " << tempZ << " " << tempRadius*tempRadius * pi << endl;
-				xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ <<  endl;
-			/*cout << tempRadius << endl;
-			
-			for(int k = 0; k < numPoints; k++)
+			xyzFile << smallestPoreIndex << endl << endl;
+			for(int i = 0; i < smallestPoreIndex; i++)
 			{
-				xyzFile << 1 << " " << tempX + kVec[k][0] * tempRadius << " " << tempY + kVec[k][1] * tempRadius << " " << tempZ + kVec[k][2] * tempRadius << endl;	
-			}*/
+				double tempX = (cubeleteList[i].x + 0.5) * cubeleteSize;
+				double tempY = (cubeleteList[i].y + 0.5) * cubeleteSize;
+				double tempZ = (cubeleteList[i].z + 0.5) * cubeleteSize;
+				
+				//xyzFile << 1 << " " << tempX << " " << tempY << " " << tempZ << endl;	
+				
+				double tempRadius = cubeleteList[i].dist;
+				
+				if(tempRadius > 0.5 and tempRadius <= 1.5)
+					xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ <<  endl;
+			}
 		}
 	}
 
