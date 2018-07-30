@@ -40,11 +40,11 @@ struct cubelete {
 	double dist;
 };
 
-int determineBin(double x, double y, double z, double gridSize, int numGridX, int numGridY, int numGridZ)
+int determineBin(double x, double y, double z, double gridSizeX, double gridSizeY, double gridSizeZ, int numGridX, int numGridY, int numGridZ)
 {
-	int cellx = (int)(x / gridSize);
-	int celly = (int)(y / gridSize);
-	int cellz = (int)(z / gridSize);
+	int cellx = (int)(x / gridSizeX);
+	int celly = (int)(y / gridSizeY);
+	int cellz = (int)(z / gridSizeZ);
 	
 	// temporary fix for if bead is at boundary
 	if(cellx == numGridX)
@@ -65,11 +65,11 @@ int determineBin(double x, double y, double z, double gridSize, int numGridX, in
 	return bin;
 }
 
-void determineCells(double x, double y, double z, double gridSize, int numGridX, int numGridY, int numGridZ, int cells[3])
+void determineCells(double x, double y, double z, double gridSizeX, double gridSizeY, double gridSizeZ, int numGridX, int numGridY, int numGridZ, int cells[3])
 {
-	int cellx = (int)(x / gridSize);
-	int celly = (int)(y / gridSize);
-	int cellz = (int)(z / gridSize);
+	int cellx = (int)(x / gridSizeX);
+	int celly = (int)(y / gridSizeY);
+	int cellz = (int)(z / gridSizeZ);
 	
 	// temporary fix for if bead is at boundary
 	if(cellx == numGridX)
@@ -394,17 +394,33 @@ int main()
 	}
 	
 	// should automatically determine this based on numbered of particles evenly dispersed in system
-	double gridSize = 1.0;
+	int desiredNumParticlesInGrid = 100;
+	
+	double systemDensity = systemBeads.size() / boxlx / boxly / boxlz;
+	double gridSize = (float)desiredNumParticlesInGrid / systemDensity;
+	gridSize = pow(gridSize, 1.0/3.0);
+	cout << "System gridsize is: " << gridSize << endl;
+	
 	int numGridX = (int)(boxlx / gridSize);
 	int numGridY = (int)(boxly / gridSize);
 	int numGridZ = (int)(boxlz / gridSize);
+	
+	double gridSizeX = boxlx / (double)numGridX;
+	double gridSizeY = boxly / (double)numGridY;
+	double gridSizeZ = boxlz / (double)numGridZ;
+	
+	double minGridSize = gridSizeX;
+	if(gridSizeY < minGridSize)
+		minGridSize = gridSizeY;
+	if(gridSizeZ < minGridSize)
+		minGridSize = gridSizeZ;
 	
 	std::vector<int> *grid = new std::vector<int>[numGridX*numGridY*numGridZ];
 	
 	// put system beads into a grid
 	for(int i = 0; i < systemBeads.size(); i++)
 	{
-		int bin = determineBin(systemBeads[i].x, systemBeads[i].y, systemBeads[i].z, gridSize, numGridX, numGridY, numGridZ);
+		int bin = determineBin(systemBeads[i].x, systemBeads[i].y, systemBeads[i].z, gridSizeX, gridSizeY, gridSizeZ, numGridX, numGridY, numGridZ);
 		
 		if(bin >= numGridX*numGridY*numGridZ)
 		{
@@ -455,7 +471,7 @@ int main()
 				
 				int cells[3];
 				
-				determineCells(tempX, tempY, tempZ, gridSize, numGridX, numGridY, numGridZ, cells);
+				determineCells(tempX, tempY, tempZ, gridSizeX, gridSizeY, gridSizeZ, numGridX, numGridY, numGridZ, cells);
 				
 				while(notDone)
 				{
@@ -627,7 +643,7 @@ int main()
 	{
 		ofstream xyzFile;
 		xyzFile.open("Pores.xyz");
-		int smallestPoreIndex = (int)(cubeleteListSize * 0.1);
+		int smallestPoreIndex = (int)(cubeleteListSize * 0.10);
 		if(xyzFile.is_open())
 		{
 			xyzFile << smallestPoreIndex << endl << endl;
@@ -639,7 +655,7 @@ int main()
 				
 				double tempRadius = cubeleteList[i].dist;
 				
-				xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ <<  endl;
+				xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ << " " << tempRadius << endl;
 			}
 			
 			xyzFile.close();
