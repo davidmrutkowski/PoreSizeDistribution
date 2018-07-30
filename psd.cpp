@@ -238,7 +238,7 @@ int main()
 				{
 					string tempString;
 					iss >> tempString;
-					if(tempString[0].compare("T") == 0 || tempString[0].compare("1") == 0)
+					if(tempString.compare("T") == 0 || tempString.compare("1") == 0)
 					{
 						outputXYZ = true;
 					}
@@ -629,6 +629,7 @@ int main()
 	}*/
 	
 	// output .xyz
+	// outputs location of largest 10% of cubeletes with indexing according to the stored radius 
 	if(outputXYZ == true)
 	{
 		ofstream xyzFile;
@@ -643,12 +644,9 @@ int main()
 				double tempY = (cubeleteList[i].y + 0.5) * cubeleteSize;
 				double tempZ = (cubeleteList[i].z + 0.5) * cubeleteSize;
 				
-				//xyzFile << 1 << " " << tempX << " " << tempY << " " << tempZ << endl;	
-				
 				double tempRadius = cubeleteList[i].dist;
 				
-				if(tempRadius > 0.5 and tempRadius <= 1.5)
-					xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ <<  endl;
+				xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ <<  endl;
 			}
 		}
 	}
