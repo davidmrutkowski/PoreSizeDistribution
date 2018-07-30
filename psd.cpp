@@ -524,7 +524,7 @@ int main()
 					// need to check this again
 					// if the minimum distance stored is less than the possible distance from cubelette center to surface of a system bead
 					// lying outside the already considered grids then don't need to search further grids
-					if(cubeleteList[index].dist <= gridSize*maxGrid - 0.5*(largestBeadDiameter))
+					if(cubeleteList[index].dist <= minGridSize*maxGrid - 0.5*(largestBeadDiameter))
 					{
 						notDone = false;
 					}
