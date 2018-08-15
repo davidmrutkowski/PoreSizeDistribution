@@ -15,6 +15,7 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <set>
 
 using namespace std;
 
@@ -168,7 +169,6 @@ int quicksort(int left, int right, struct cubelete *cubeleteList)
 
 int main() 
 {	
-	
 	string atomfilename;
 	string xyzfilename;
 	
@@ -405,6 +405,13 @@ int main()
 	int numGridY = (int)(boxly / gridSize);
 	int numGridZ = (int)(boxlz / gridSize);
 	
+	if(numGridX < 1)
+		numGridX = 1;
+	if(numGridY < 1)
+		numGridY = 1;
+	if(numGridZ < 1)
+		numGridZ = 1;
+	
 	double gridSizeX = boxlx / (double)numGridX;
 	double gridSizeY = boxly / (double)numGridY;
 	double gridSizeZ = boxlz / (double)numGridZ;
@@ -435,6 +442,13 @@ int main()
 	int numCubeX = (int)(boxlx / cubeleteSize);
 	int numCubeY = (int)(boxly / cubeleteSize);
 	int numCubeZ = (int)(boxlz / cubeleteSize);
+	
+	if(numCubeX < 1)
+		numCubeX = 1;
+	if(numCubeY < 1)
+		numCubeY = 1;
+	if(numCubeZ < 1)
+		numCubeZ = 1;
 	
 	//stores the distances to closest system bead from position associated with [i*numCubeX^2 + j*numCubeY + k]
 	int cubeleteListSize = numCubeX*numCubeY*numCubeZ;
@@ -473,8 +487,11 @@ int main()
 				
 				determineCells(tempX, tempY, tempZ, gridSizeX, gridSizeY, gridSizeZ, numGridX, numGridY, numGridZ, cells);
 				
+				// need to ensure that maxGrid does not go larger than it can possibly be!
 				while(notDone)
 				{
+					//cout << maxGrid << endl;
+					
 					for(int m = -maxGrid; m <= maxGrid; m++)
 					{
 						for(int n = -maxGrid; n <= maxGrid; n++)
@@ -562,6 +579,8 @@ int main()
 		}
 	}
 	
+	std::set<int> outputCubeletes;
+	
 	#pragma omp parallel for
 	for(int i = 0; i < numTrials; i++)
 	{
@@ -574,7 +593,7 @@ int main()
 		double tempY = (cubeleteList[randomCubeIndex].y + 0.5) * cubeleteSize;
 		double tempZ = (cubeleteList[randomCubeIndex].z + 0.5) * cubeleteSize;
 		
-		for(int j = 0; j < cubeleteListSize; j++)
+		for(int j = 0; j <= zeroCubeletePosition; j++)
 		{
 			double distX = (cubeleteList[j].x + 0.5) * cubeleteSize - tempX;
 			distX = periodicWrap(distX, boxlx);
@@ -592,6 +611,7 @@ int main()
 			if(dist <= cubeleteList[j].dist)
 			{
 				// this is the largest sphere which randomCubeIndex can fit inside
+				outputCubeletes.insert(j);
 				if(j > maxCubelete)
 				{
 					maxCubelete = j;
@@ -608,7 +628,7 @@ int main()
 		}
 	}
 	
-	cout << (maxCubelete + 1.0) / (double)cubeleteListSize * 100.0 << "% cubelete list utilization" << endl;
+	cout << (maxCubelete + 1.0) / (double)zeroCubeletePosition * 100.0 << "% cubelete list utilization" << endl;
 	
 	ofstream psdCummulative;
 	psdCummulative.open("psd_cummulative.out");
@@ -638,24 +658,22 @@ int main()
 	}
 	
 	// output .xyz
-	// outputs location of largest 10% of cubeletes with indexing according to the stored radius 
 	if(outputXYZ == true)
 	{
 		ofstream xyzFile;
 		xyzFile.open("Pores.xyz");
-		int smallestPoreIndex = (int)(cubeleteListSize * 0.10);
 		if(xyzFile.is_open())
 		{
-			xyzFile << smallestPoreIndex << endl << endl;
-			for(int i = 0; i < smallestPoreIndex; i++)
+			for(std::set<int>::iterator it=outputCubeletes.begin(); it != outputCubeletes.end(); it++)
 			{
-				double tempX = (cubeleteList[i].x + 0.5) * cubeleteSize;
-				double tempY = (cubeleteList[i].y + 0.5) * cubeleteSize;
-				double tempZ = (cubeleteList[i].z + 0.5) * cubeleteSize;
+				int currIndex = *it;
+				double tempX = (cubeleteList[currIndex].x + 0.5) * cubeleteSize;
+				double tempY = (cubeleteList[currIndex].y + 0.5) * cubeleteSize;
+				double tempZ = (cubeleteList[currIndex].z + 0.5) * cubeleteSize;
 				
-				double tempRadius = cubeleteList[i].dist;
+				double tempRadius = cubeleteList[currIndex].dist;
 				
-				xyzFile << (int)round(tempRadius) << " " << tempX << " " << tempY << " " << tempZ << " " << tempRadius << endl;
+				xyzFile << "Ar" << " " << tempX << " " << tempY << " " << tempZ << " " << tempRadius * 2 << endl;
 			}
 			
 			xyzFile.close();
