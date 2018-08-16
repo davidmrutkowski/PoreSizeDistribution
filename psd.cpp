@@ -580,6 +580,7 @@ int main()
 	}
 	
 	std::set<int> outputCubeletes;
+	int *tempHistArray = new int[numTrials];
 	
 	#pragma omp parallel for
 	for(int i = 0; i < numTrials; i++)
@@ -619,12 +620,21 @@ int main()
 				
 				int tempHistPos = (int)((cubeleteList[j].dist * 2.0) / histStep);
 				
-				for(int h = 0; h < tempHistPos; h++)
-				{
-					hist[h] += 1;
-				}
+				
+				tempHistArray[i] = tempHistPos;
+				
 				break;
 			}
+		}
+	}
+	
+	for(int i = 0; i < numTrials; i++)
+	{
+		int tempHistPos = tempHistArray[i];
+		
+		for(int h = 0; h < tempHistPos; h++)
+		{
+			hist[h] += 1;
 		}
 	}
 	
