@@ -41,6 +41,12 @@ struct cubelete {
 	double dist;
 };
 
+struct point {
+	int x;
+	int y;
+	int z;
+};
+
 int determineBin(double x, double y, double z, double gridSizeX, double gridSizeY, double gridSizeZ, int numGridX, int numGridY, int numGridZ)
 {
 	int cellx = (int)(x / gridSizeX);
@@ -385,7 +391,7 @@ int main()
 
 	// done reading from files
 	
-	// shift simulation box if necessary (any negative values values)
+	// shift simulation box if necessary (any negative coordinates)
 	for(int i = 0; i < systemBeads.size(); i++)
 	{
 		systemBeads[i].x -= minX;
@@ -393,8 +399,9 @@ int main()
 		systemBeads[i].z -= minZ;
 	}
 	
+	// should determine if grid is needed based on # of system beads (<1000 dont bother with grid?)
 	// should automatically determine this based on numbered of particles evenly dispersed in system
-	int desiredNumParticlesInGrid = 100;
+	int desiredNumParticlesInGrid = 20;
 	
 	double systemDensity = systemBeads.size() / boxlx / boxly / boxlz;
 	double gridSize = (float)desiredNumParticlesInGrid / systemDensity;
@@ -405,12 +412,12 @@ int main()
 	int numGridY = (int)(boxly / gridSize);
 	int numGridZ = (int)(boxlz / gridSize);
 	
-	if(numGridX < 1)
-		numGridX = 1;
-	if(numGridY < 1)
-		numGridY = 1;
-	if(numGridZ < 1)
-		numGridZ = 1;
+	if(numGridX < 3)
+		numGridX = 3;
+	if(numGridY < 3)
+		numGridY = 3;
+	if(numGridZ < 3)
+		numGridZ = 3;
 	
 	double gridSizeX = boxlx / (double)numGridX;
 	double gridSizeY = boxly / (double)numGridY;
@@ -461,7 +468,47 @@ int main()
 	cout << "Number of Cubeletes: " << cubeleteListSize << endl;
 	cout << "Memory for Cubelete List (GB): " << cubeleteListSize / 8.0 / 1000.0 / 1000.0 / 1000.0 * (64 + 3*2) << endl;
 	
-	// omp parallel statement here
+	// generate grid neighbor mapping	
+	int xMin = (int)(numGridX*0.5);
+	int yMin = (int)(numGridY*0.5);
+	int zMin = (int)(numGridZ*0.5);
+	
+	int xMax = (int)round(numGridX*0.5);
+	int yMax = (int)round(numGridY*0.5);
+	int zMax = (int)round(numGridZ*0.5);
+	
+	int maxGridNeighbor = xMin;
+	if(yMin > maxGridNeighbor)
+		maxGridNeighbor = yMin;
+	if(zMin > maxGridNeighbor)
+		maxGridNeighbor = zMin;
+	maxGridNeighbor = maxGridNeighbor + 1;
+	
+	
+	vector<vector<struct point> > gridNeighbors(maxGridNeighbor);
+	
+	for(int m = -xMin; m < xMax; m++)
+	{
+		for(int n = -yMin; n < yMax; n++)
+		{
+			for(int o = -zMin; o < zMax; o++)
+			{
+				int largest = abs(m);
+				if(largest < abs(n))
+					largest = abs(n);
+				if(largest < abs(o))
+					largest = abs(o);
+				
+				struct point tempPoint;
+				tempPoint.x = m;
+				tempPoint.y = n;
+				tempPoint.z = o;
+				
+				gridNeighbors[largest].push_back(tempPoint);
+			}
+		}
+	}
+	
 	#pragma omp parallel for
 	for(int i = 0; i < numCubeX; i++)
 	{		
@@ -480,75 +527,72 @@ int main()
 				cubeleteList[index].y = j;
 				cubeleteList[index].z = k;
 				
-				bool notDone = true;
-				int maxGrid = 0;
+				bool done = false;
+				int maxGridX = 0;
+				int maxGridY = 0;
+				int maxGridZ = 0;
 				
 				int cells[3];
 				
 				determineCells(tempX, tempY, tempZ, gridSizeX, gridSizeY, gridSizeZ, numGridX, numGridY, numGridZ, cells);
 				
+				int layer = 0;
 				// need to ensure that maxGrid does not go larger than it can possibly be!
-				while(notDone)
+				while(done == false && layer < maxGridNeighbor)
 				{
-					//cout << maxGrid << endl;
-					
-					for(int m = -maxGrid; m <= maxGrid; m++)
+					for(int gn = 0; gn < gridNeighbors[layer].size(); gn++)
 					{
-						for(int n = -maxGrid; n <= maxGrid; n++)
+						int m = gridNeighbors[layer][gn].x;
+						int n = gridNeighbors[layer][gn].y;
+						int o = gridNeighbors[layer][gn].z;
+						
+						int cellx = cells[0] + m;
+						int celly = cells[1] + n;
+						int cellz = cells[2] + o;
+						
+						cellx = cellx - numGridX*(int)floor((double)(cellx)/(double)(numGridX));
+						celly = celly - numGridY*(int)floor((double)(celly)/(double)(numGridY));
+						cellz = cellz - numGridZ*(int)floor((double)(cellz)/(double)(numGridZ));
+												
+						int tempGrid = (cellx*numGridY*numGridZ) + (celly)*numGridZ + cellz;
+						
+						// now search through all systemBeads in tempGrid
+						std::vector<int> currGrid = grid[tempGrid];
+						for(int v = 0; v < currGrid.size(); v++)
 						{
-							for(int o = -maxGrid; o <= maxGrid; o++)
+							int tempBead = currGrid[v];
+							
+							double xDist = tempX - systemBeads[tempBead].x;
+							xDist = periodicWrap(xDist, boxlx);
+							double yDist = tempY - systemBeads[tempBead].y;
+							yDist = periodicWrap(yDist, boxly);
+							double zDist = tempZ - systemBeads[tempBead].z;
+							zDist = periodicWrap(zDist, boxlz);
+							
+							double dist = xDist*xDist + yDist*yDist + zDist*zDist;
+							dist = sqrt(dist);
+							
+							dist = dist - 0.5*systemBeads[tempBead].size;
+							
+							if(dist < cubeleteList[index].dist)
 							{
-								if(abs(m) == maxGrid || abs(n) == maxGrid || abs(o) == maxGrid)
-								{
-									int cellx = cells[0] + m;
-									int celly = cells[1] + n;
-									int cellz = cells[2] + o;
-									
-									cellx = cellx - numGridX*(int)floor((double)(cellx)/(double)(numGridX));
-									celly = celly - numGridY*(int)floor((double)(celly)/(double)(numGridY));
-									cellz = cellz - numGridZ*(int)floor((double)(cellz)/(double)(numGridZ));
-															
-									int tempGrid = (cellx*numGridY*numGridZ) + (celly)*numGridZ + cellz;
-									
-									// now search through all systemBeads in tempGrid
-									std::vector<int> currGrid = grid[tempGrid];
-									for(int v = 0; v < currGrid.size(); v++)
-									{
-										int tempBead = currGrid[v];
-										
-										double xDist = tempX - systemBeads[tempBead].x;
-										xDist = periodicWrap(xDist, boxlx);
-										double yDist = tempY - systemBeads[tempBead].y;
-										yDist = periodicWrap(yDist, boxly);
-										double zDist = tempZ - systemBeads[tempBead].z;
-										zDist = periodicWrap(zDist, boxlz);
-										
-										double dist = xDist*xDist + yDist*yDist + zDist*zDist;
-										dist = sqrt(dist);
-										
-										dist = dist - 0.5*systemBeads[tempBead].size;
-										
-										if(dist < cubeleteList[index].dist)
-										{
-											cubeleteList[index].dist = dist;
-										}
-									}
-								}
+								cubeleteList[index].dist = dist;
 							}
 						}
+						
 					}
 					
-					// need to check this again
 					// if the minimum distance stored is less than the possible distance from cubelette center to surface of a system bead
 					// lying outside the already considered grids then don't need to search further grids
-					if(cubeleteList[index].dist <= minGridSize*maxGrid - 0.5*(largestBeadDiameter))
+					if(cubeleteList[index].dist <= minGridSize*layer - 0.5*(largestBeadDiameter))
 					{
-						notDone = false;
+						//cout << "layer: " << layer << endl;
+						done = true;
 					}
 					else
 					{
 						//add another grid layer
-						maxGrid += 1;
+						layer += 1;
 					}
 				}
 			}
