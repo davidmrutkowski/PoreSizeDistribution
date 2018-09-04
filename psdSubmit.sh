@@ -1,7 +1,5 @@
 #!/bin/sh
 #SBATCH --job-name=psd-Test
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=d.rutkowski@chem.ufl.edu
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --ntasks-per-socket=1
