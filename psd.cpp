@@ -733,6 +733,21 @@ int main()
 			xyzFile.close();
 		}
 	}
+	
+	// output shifted coordinated, new.xyz
+	ofstream newXYZFile;
+	newXYZFile.open("new.xyz");
+	if(newXYZFile.is_open())
+	{
+		newXYZFile << systemBeads.size() << endl << endl;
+		
+		for(int i = 0; i < systemBeads.size(); i++)
+		{			
+			newXYZFile << systemBeads[i].id << " " << systemBeads[i].x << " " << systemBeads[i].y << " " << systemBeads[i].z << endl;
+		}
+		
+		newXYZFile.close();
+	}
 
 	return 0;
 }
