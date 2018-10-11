@@ -2,7 +2,7 @@
 // Name        : psd.cpp
 // Author      : David Rutkowski
 // Description : Calculates the pore size distribution (psd) based originally on code from Poreblazer (Lev Sarkisov group)
-// Compile with "icpc -fopenmp -o psd psd.cpp" or equivalent g++ expression
+// Compile with "icpc -fopenmp -O2 -o psd psd.cpp" or equivalent g++ expression
 //============================================================================
 
 #include <iostream>
@@ -16,6 +16,8 @@
 #include <algorithm>
 #include <sstream>
 #include <set>
+#include <ctime>
+#include <chrono>
 
 using namespace std;
 
@@ -185,7 +187,7 @@ int main()
 	// doesnt do anything with these values currently, always assumes box is rectangular
 	double boxAngleX, boxAngleY, boxAngleZ;
 	
-	int numTrials = 5000;
+	int numTrials = 1295029;
 	
 	// minHistDist doesn't do anything currently and is effectively 0.0 regardless of input file
 	double minHistDist = 0.0;
@@ -466,7 +468,7 @@ int main()
 	}
 	
 	cout << "Number of Cubeletes: " << cubeleteListSize << endl;
-	cout << "Memory for Cubelete List (GB): " << cubeleteListSize / 8.0 / 1000.0 / 1000.0 / 1000.0 * (64 + 3*2) << endl;
+	cout << "Memory for Cubelete List (GB): " << cubeleteListSize / 8.0 / 1000.0 / 1000.0 / 1000.0 * (64 + 3*8) << endl;
 	
 	// generate grid neighbor mapping	
 	int xMin = (int)(numGridX*0.5);
@@ -508,6 +510,8 @@ int main()
 			}
 		}
 	}
+	
+	//auto start = std::chrono::system_clock::now();
 	
 	#pragma omp parallel for
 	for(int i = 0; i < numCubeX; i++)
@@ -623,8 +627,11 @@ int main()
 		}
 	}
 	
-	std::set<int> outputCubeletes;
+	//std::set<int> outputCubeletes;
 	int *tempHistArray = new int[numTrials];
+	int *outputCubeletes = new int[numTrials];
+	
+	//cout << zeroCubeletePosition << endl;
 	
 	#pragma omp parallel for
 	for(int i = 0; i < numTrials; i++)
@@ -656,7 +663,13 @@ int main()
 			if(dist <= cubeleteList[j].dist)
 			{
 				// this is the largest sphere which randomCubeIndex can fit inside
-				outputCubeletes.insert(j);
+				
+				// this is not thread safe!
+				//outputCubeletes.insert(j);
+				
+				// this is thread safe!
+				outputCubeletes[i] = randomCubeIndex;
+				
 				if(j > maxCubelete)
 				{
 					maxCubelete = j;
@@ -671,6 +684,11 @@ int main()
 			}
 		}
 	}
+	
+	//auto end = std::chrono::system_clock::now();
+
+	//auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	//std::cout << elapsed.count() << endl;
 	
 	for(int i = 0; i < numTrials; i++)
 	{
@@ -712,22 +730,29 @@ int main()
 	}
 	
 	// output .xyz
+	std::set<int> poreCubeletes;
+	for(int i = 0; i < numTrials; i++)
+	{
+		poreCubeletes.insert(outputCubeletes[i]);
+	}
+	
 	if(outputXYZ == true)
 	{
 		ofstream xyzFile;
 		xyzFile.open("Pores.xyz");
 		if(xyzFile.is_open())
 		{
-			for(std::set<int>::iterator it=outputCubeletes.begin(); it != outputCubeletes.end(); it++)
+			for(std::set<int>::iterator it=poreCubeletes.begin(); it != poreCubeletes.end(); it++)
 			{
 				int currIndex = *it;
+				
 				double tempX = (cubeleteList[currIndex].x + 0.5) * cubeleteSize;
 				double tempY = (cubeleteList[currIndex].y + 0.5) * cubeleteSize;
 				double tempZ = (cubeleteList[currIndex].z + 0.5) * cubeleteSize;
 				
 				double tempRadius = cubeleteList[currIndex].dist;
 				
-				xyzFile << "Ar" << " " << tempX << " " << tempY << " " << tempZ << " " << tempRadius * 2 << endl;
+				xyzFile << "Ar" << " " << tempX << " " << tempY << " " << tempZ << " " << tempRadius << endl;
 			}
 			
 			xyzFile.close();
