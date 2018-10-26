@@ -580,6 +580,7 @@ int main()
 							
 							if(dist < cubeleteList[index].dist)
 							{
+								// store radius to closets system bead
 								cubeleteList[index].dist = dist;
 							}
 						}
@@ -607,7 +608,7 @@ int main()
 	quicksort(0, cubeleteListSize-1, cubeleteList); 	
 	
 	// randomly pick cubeletes	
-	int histSize = (int)((maxHistDist)/ histStep);
+	int histSize = (int)((maxHistDist)/ histStep) + 1;
 	int *hist = new int[histSize];
 	for(int h = 0; h < histSize; h++)
 	{
@@ -627,6 +628,17 @@ int main()
 		}
 	}
 	
+	int maxDesiredCubeletePosition = 0;
+	// search through cubeleteList fowards to find when position values start being less than maxHistDist
+	for(int i = 0; i < cubeleteListSize; i++)
+	{
+		if(cubeleteList[i].dist <= maxHistDist)
+		{
+			maxDesiredCubeletePosition = i;
+			break;
+		}
+	}
+	
 	//std::set<int> outputCubeletes;
 	int *tempHistArray = new int[numTrials];
 	int *outputCubeletes = new int[numTrials];
@@ -639,13 +651,13 @@ int main()
 		//double tempRand = rand() / 32768.0;
 		double tempRand = drand48();
 		//cout << "i: " << i << " " << tempRand << endl;
-		int randomCubeIndex = (int)(zeroCubeletePosition * tempRand);
+		int randomCubeIndex = (int)round((zeroCubeletePosition-maxDesiredCubeletePosition) * tempRand) + maxDesiredCubeletePosition;
 		
 		double tempX = (cubeleteList[randomCubeIndex].x + 0.5) * cubeleteSize;
 		double tempY = (cubeleteList[randomCubeIndex].y + 0.5) * cubeleteSize;
 		double tempZ = (cubeleteList[randomCubeIndex].z + 0.5) * cubeleteSize;
 		
-		for(int j = 0; j <= zeroCubeletePosition; j++)
+		for(int j = maxDesiredCubeletePosition; j <= zeroCubeletePosition; j++)
 		{
 			double distX = (cubeleteList[j].x + 0.5) * cubeleteSize - tempX;
 			distX = periodicWrap(distX, boxlx);
