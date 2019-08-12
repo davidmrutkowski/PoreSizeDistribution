@@ -187,7 +187,7 @@ int main()
 	// doesnt do anything with these values currently, always assumes box is rectangular
 	double boxAngleX, boxAngleY, boxAngleZ;
 	
-	int numTrials = 1295029;
+	int numTrials = 10000;
 	
 	// minHistDist doesn't do anything currently and is effectively 0.0 regardless of input file
 	double minHistDist = 0.0;
@@ -349,7 +349,11 @@ int main()
 					double tempX, tempY, tempZ;
 					
 					if(iss >> tempString >> tempX >> tempY >> tempZ)
-					{					
+					{
+                        tempX = periodicWrap(tempX, boxlx);
+                        tempY = periodicWrap(tempY, boxly);
+                        tempZ = periodicWrap(tempZ, boxlz);
+                        
 						systemBeads.push_back(bead());
 						systemBeads[systemBeads.size() - 1].id = tempString;
 						systemBeads[systemBeads.size() - 1].x = tempX;
@@ -512,7 +516,7 @@ int main()
 	}
 	
 	//auto start = std::chrono::system_clock::now();
-	
+    
 	#pragma omp parallel for
 	for(int i = 0; i < numCubeX; i++)
 	{		
@@ -603,14 +607,15 @@ int main()
 			}
 		}
 	}
-	
+    
 	// sort cubelets using quicksort
 	quicksort(0, cubeleteListSize-1, cubeleteList); 	
 	
 	// randomly pick cubeletes	
 	int histSize = (int)((maxHistDist)/ histStep) + 1;
-	int *hist = new int[histSize];
-	for(int h = 0; h < histSize; h++)
+    std::vector <int> hist (histSize);
+	//int *hist = new int[histSize];
+	for(int h = 0; h < hist.size(); h++)
 	{
 		hist[h] = 0;
 	}
@@ -644,7 +649,7 @@ int main()
 	int *outputCubeletes = new int[numTrials];
 	
 	//cout << zeroCubeletePosition << endl;
-	
+    
 	#pragma omp parallel for
 	for(int i = 0; i < numTrials; i++)
 	{
@@ -705,7 +710,12 @@ int main()
 	for(int i = 0; i < numTrials; i++)
 	{
 		int tempHistPos = tempHistArray[i];
-		
+        
+        while(tempHistPos >= hist.size())
+        {
+            hist.push_back(0);
+        }
+        
 		for(int h = 0; h < tempHistPos; h++)
 		{
 			hist[h] += 1;
@@ -718,7 +728,7 @@ int main()
 	psdCummulative.open("psd_cummulative.out");
 	if(psdCummulative.is_open())
 	{
-		for (int h = 0; h < histSize; h++)
+		for (int h = 0; h < hist.size(); h++)
 		{
 			psdCummulative << h*histStep + 0.5*histStep << " " << (double)hist[h] / (double)hist[0] << endl;
 		}
@@ -731,7 +741,7 @@ int main()
 	psd.open("psd.out");
 	if(psd.is_open())
 	{
-		for (int h = 1; h < histSize - 1; h++)
+		for (int h = 1; h < hist.size() - 1; h++)
 		{
 			double x1 = (h-1)*histStep + 0.5*histStep;
 			double x2 = (h+1)*histStep + 0.5*histStep;
@@ -770,7 +780,7 @@ int main()
 			xyzFile.close();
 		}
 	}
-	
+    
 	// output shifted coordinated, new.xyz
 	ofstream newXYZFile;
 	newXYZFile.open("new.xyz");
@@ -779,8 +789,8 @@ int main()
 		newXYZFile << systemBeads.size() << endl << endl;
 		
 		for(int i = 0; i < systemBeads.size(); i++)
-		{			
-			newXYZFile << systemBeads[i].id << " " << systemBeads[i].x << " " << systemBeads[i].y << " " << systemBeads[i].z << endl;
+		{
+            newXYZFile << systemBeads[i].id << " " << systemBeads[i].x << " " << systemBeads[i].y << " " << systemBeads[i].z << endl;
 		}
 		
 		newXYZFile.close();
